@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Casa Abierta de Jóvenes</title>
+  <style>
+    :root{
+      --blanco:#ffffff;
+      --celeste:#cfe9ff;
+      --azul-marino:#0b2e59;
+      /* Tamaños por defecto (vista grande) */
+      --card-gap:20px;
+      --img-max-h: clamp(260px, 34vh, 460px);
+      --btn-pad-y:12px;
+      --grid-min:240px;
+    }
+    /* Vista compacta: se aplican valores más pequeños */
+    body.compact{
+      --card-gap:14px;
+      --img-max-h: clamp(180px, 26vh, 320px);
+      --btn-pad-y:10px;
+      --grid-min:180px;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: linear-gradient(180deg, var(--blanco), var(--celeste));
+      color:#0d1b2a;
+      min-height:100vh;
+    }
+    header{
+      position:sticky; top:0; z-index:5;
+      background:rgba(255,255,255,.8);
+      border-bottom:1px solid #e6eef8;
+      backdrop-filter:saturate(160%) blur(8px);
+    }
+    .wrap{max-width:1100px; margin:0 auto; padding:16px;}
+    .title{display:flex; align-items:center; gap:12px; flex-wrap:wrap; color:var(--azul-marino);}
+    .title h1{font-size:clamp(20px, 3vw, 32px); font-weight:800}
+    .subtitle{margin:4px 0 0; color:#30507a}
+
+    .grid{display:grid; gap:var(--card-gap); padding:24px 16px 48px; grid-template-columns: repeat(auto-fill, minmax(var(--grid-min),1fr));}
+
+    .card{
+      background:var(--blanco);
+      border:1px solid #e2ecfa;
+      border-radius:18px;
+      box-shadow: 0 6px 20px rgba(11,46,89,.08);
+      display:flex; flex-direction:column; align-items:center; text-align:center;
+      transition: transform .18s ease, box-shadow .18s ease;
+      height:100%;
+    }
+    .card:hover{ transform: translateY(-3px); box-shadow: 0 10px 28px rgba(11,46,89,.12); }
+
+    /* Contenedor uniforme para imágenes */
+    .img-wrap{
+      width:100%;
+      aspect-ratio: 3 / 4; /* mantiene proporción uniforme y responde al ancho de la tarjeta */
+      background:linear-gradient(180deg,#ecf5ff,#d8ebff);
+      display:grid; place-items:center;
+      max-height: var(--img-max-h); /* límite responsivo: móvil → desktop */
+    }
+    .img-wrap img{ width:100%; height:100%; object-fit:cover; }
+
+    .name-btn{
+      margin:14px 0 16px; width:90%;
+      background:var(--azul-marino);
+      border:none; cursor:pointer; border-radius:999px; padding:var(--btn-pad-y) 16px; font-weight:700;
+      color:var(--blanco);
+      transition: background .2s ease, transform .05s ease;
+    }
+    .name-btn:hover{ background:#123d74 }
+
+    .modal{ position:fixed; inset:0; display:grid; place-items:center; z-index:10; background: rgba(11,46,89,.6); backdrop-filter: blur(2px); }
+    .modal-card{ width:min(640px, 92%); background:var(--blanco); border-radius:22px; padding:28px; text-align:center; border:1px solid #e2ecfa; box-shadow: 0 14px 30px rgba(0,0,0,.2); }
+    .modal h2{color:var(--azul-marino); font-size: clamp(22px, 4vw, 34px); margin:0 0 10px}
+    .modal p{color:#31507b; margin:0 0 22px}
+
+    .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .note{font-size:12px; color:#2b4e7c}
+    .spacer{flex:1}
+
+    footer{padding:24px 16px; background:linear-gradient(180deg, #eaf4ff, #d6eaff); border-top:1px solid #cde1ff; color:#2b4e7c}
+    .muted{opacity:.8}
+
+    @media (max-width: 640px){
+      .grid{gap:var(--card-gap); padding:16px}
+    }
+    @media (min-width: 1280px){
+      .wrap{max-width:1200px}
+    }
+  </style>
+</head>
+<body>
+  <div id="welcome" class="modal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <h2>¡Bienvenidos a la Casa Abierta de Jóvenes!</h2>
+      <p>Explora a cada personaje bíblico. Haz clic en el nombre para reproducir su audio.</p>
+      <button class="name-btn" id="enterBtn">Entrar</button>
+    </div>
+  </div>
+
+  <header>
+    <div class="wrap">
+      <div class="title">
+        <h1>Casa Abierta Bíblica</h1>
+        <div class="subtitle">Imágenes, nombres y audios por personaje</div>
+        <div class="spacer"></div>
+        <div class="toolbar">
+          <button class="name-btn" id="toggleView" style="width:auto; padding:8px 12px; font-weight:600">Vista compacta</button>
+          <button class="name-btn" id="stopAll" style="width:auto; padding:8px 12px; font-weight:600">Silenciar todo</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="grid" id="cards"></section>
+  </main>
+
+  <script>
+    const DATA = [
+      {nombre:"Ester",   img:"imagenes/ester.jpeg",   audio:"audios/ester.mp3"},
+      {nombre:"José",    img:"imagenes/jose.jpeg",    audio:"audios/jose.mp3"},
+      {nombre:"Josue",   img:"imagenes/josue.jpeg",   audio:"audios/josue.mp3"},
+      {nombre:"Jesús",   img:"imagenes/jesus.jpeg",   audio:"audios/jesus.mp3"},
+      {nombre:"Pablo",   img:"imagenes/pablo.jpeg",   audio:"audios/pablo.mp3"},
+      {nombre:"Timoteo", img:"imagenes/timoteo.jpeg", audio:"audios/timoteo.mp3"},
+      {nombre:"Rut",     img:"imagenes/rut.jpeg",     audio:"audios/rut.mp3"},
+      {nombre:"Debora",  img:"imagenes/debora.jpeg",  audio:"audios/debora.mp3"},
+      {nombre:"Sanson",  img:"imagenes/sanson.jpeg",  audio:"audios/sanson.mp3"},
+      {nombre:"Moisés",  img:"imagenes/moises.jpeg",  audio:"audios/moises.mp3"},
+      {nombre:"Pedro",   img:"imagenes/pedro.jpeg",   audio:"audios/pedro.mp3"},
+      {nombre:"Abraham", img:"imagenes/abraham.jpeg", audio:"audios/abraham.mp3"}
+    ];
+
+    const cardsEl = document.getElementById('cards');
+
+    DATA.forEach(({nombre, img, audio}) => {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'img-wrap';
+      const image = document.createElement('img');
+      image.alt = `Imagen de ${nombre}`;
+      image.src = img;
+      imgWrap.appendChild(image);
+
+      const btn = document.createElement('button');
+      btn.className = 'name-btn';
+      btn.textContent = nombre;
+
+      const audioEl = document.createElement('audio');
+      audioEl.src = audio;
+
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('audio').forEach(a => { if(!a.paused){ a.pause(); a.currentTime = 0; } });
+        audioEl.play();
+      });
+
+      card.appendChild(imgWrap);
+      card.appendChild(btn);
+      card.appendChild(audioEl);
+      cardsEl.appendChild(card);
+    });
+
+    // Bienvenida
+    document.getElementById('enterBtn').addEventListener('click',()=>{
+      document.getElementById('welcome').style.display='none';
+    });
+
+    // Silenciar todo
+    document.getElementById('stopAll').addEventListener('click',()=>{
+      document.querySelectorAll('audio').forEach(a => { a.pause(); a.currentTime = 0; });
+    });
+
+    // Toggle vista compacta / grande
+    const toggleBtn = document.getElementById('toggleView');
+    let compact = false;
+    toggleBtn.addEventListener('click', () => {
+      compact = !compact;
+      document.body.classList.toggle('compact', compact);
+      toggleBtn.textContent = compact ? 'Vista grande' : 'Vista compacta';
+    });
+  </script>
+</body>
+</html>
